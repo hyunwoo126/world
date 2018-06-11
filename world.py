@@ -1,5 +1,7 @@
 import csv
 
+
+
 class Nation:
     def __init__(self, name, staticData):
         self.name = name
@@ -10,6 +12,17 @@ class Nation:
     def addYearData(self, year, yearData):
         self.data[year] = yearData
 
+    def getGDP(self, year, perCap = False):
+        data = self.data
+        if year not in data or 'gdp_percap' not in data[year] or 'population' not in data[year]:
+            return False
+        else:
+            data = data[year]
+            try:
+                return round(float(data['gdp_percap']) * float(data['population'] if not perCap else 1))
+            except ValueError:
+                return False
+
 class World:
     def __init__(self):
         self.totalNations = 0
@@ -18,11 +31,14 @@ class World:
         self.allProps = ['iso2c','iso3c','country','year','gdp_percap','life_expect','population','birth_rate','neonat_mortal_rate','region','income']
         self.staticProps = ['iso2c','iso3c','region']
         self.yearlyProps =  ['gdp_percap', 'life_expect', 'population', 'birth_rate','neonat_mortal_rate', 'income']
-        self.data = self.processCSV()
+        self.filePath = './data/datavis/nations.csv'
+        self.nations = self.processCSV()
 
         print('total nation count: '+str(self.totalNations))
         print('earliest year: '+str(self.earliestYear))
         print('latest year: '+str(self.latestYear))
+
+
 
     def processCSV(self):
         output = {}
@@ -39,7 +55,7 @@ class World:
             return outputData
 
         print('csv process initalized...')
-        with open('./data/nations.csv', newline='') as csvfile:
+        with open(self.filePath, newline='') as csvfile:
             nations = csv.reader(csvfile)
             props = []
             for row in nations:
@@ -66,8 +82,33 @@ class World:
         
         return output
 
-    def showAllNations(self):
-        for nation in self.data:
-            print(self.data[nation].name)
+    def allTheNations(self):
+        for nation in self.nations:
+            print(self.nations[nation].name)
 
-    # def showAllGDP(self, year):
+    def worldPop(self, year):
+        pop = 0
+        nations = self.nations
+        for nation in nations.values():
+            if year in nation.data and nation.data[year]['population']:
+                pop += round(float(nation.data[year]['population']))
+        return pop
+
+    def showAllGDP(self, year, perCap = False):
+        def fnRanking(nation):
+            GDP = self.nations[nation].getGDP(year, perCap)
+            if GDP:
+                return GDP
+            else:
+                return 0
+        ranked = sorted(self.nations, key=fnRanking, reverse=True)
+        rank = 1
+        for nation in ranked:
+            nationInst = self.nations[nation]
+            GDP = nationInst.getGDP(year, perCap)
+            if not GDP:
+                text = '----'
+            else:
+                text = str(GDP)
+            print(str(rank).ljust(4), nationInst.name.ljust(34), text)
+            rank += 1
